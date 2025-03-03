@@ -1,0 +1,6 @@
+# Except .cs and .pdf files
+!**/*.cs
+!**/*.pdf
+
+# Ignore everything in the quiz folder
+*/*/*
