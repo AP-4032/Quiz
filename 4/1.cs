@@ -1,83 +1,316 @@
 using System;
+using System.Collections.Generic;
 
-class Animal
+struct File
 {
-    public string Name;
-    public int Age;
+    public string Name { get; set; }
+    public int Size { get; set; }
+    public string Content { get; set; }
+    public Directory? Parent { get; set; }
+    public DateTime CreationDate { get; set; }
 
-    public Animal(string name , int age)
+    public File(string Name, string Content)
     {
-        Name = name;
-        Age = age;
-    }
-
-    public virtual void MakeSound()
-    {
-        Console.WriteLine("sound sound");
+        this.Name = Name;
+        this.Content = Content;
+        this.Size = Content.Length;
+        this.CreationDate = DateTime.Now;
+        Parent = null;
     }
 }
 
-class Dog : Animal
+class Directory
 {
-    public Dog(string name , int age) : base(name ,age)
-    {}
+    public string Name { get; set; }
+    public List<File> Files { get; set; }
+    public List<Directory> Directories { get; set; }
+    public Directory Parent { get; set; }
+    public DateTime CreationDate { get; set; }
 
-    public override void MakeSound()
+    public Directory(string Name, Directory Parent)
     {
-        Console.WriteLine("hup hup");
+        this.Name = Name;
+        this.Parent = Parent;
+        this.Files = new List<File>();
+        this.Directories = new List<Directory>();
+        this.CreationDate = DateTime.Now;
     }
 }
 
-class Cat : Animal
+class FileSystem
 {
-    public Cat(string name , int age):base(name,age) 
-    {}
+    public Directory Root;
+    public Directory CurrentDirectory;
 
-    public override void MakeSound()
+    public int TotalFiles
     {
-        Console.WriteLine("mio mio");
+        get
+        {
+            return CountFiles(Root);
+        }
     }
 
-    public virtual void Groom()
+    public int TotalDirectories
     {
-        Console.WriteLine("clean cat");
-    }
-}
-
-class PersianCat : Cat
-{
-    public PersianCat(string name , int age) : base(name,age)
-    {}
-
-    public override void MakeSound()
-    {
-        Console.WriteLine("pmio pmio");
+        get
+        {
+            return CountDirectories(Root);
+        }
     }
 
-    public override void Groom()
+    public string CurrentPath
     {
-        Console.WriteLine("p clean cat");
+        get
+        {
+            return GetPath(CurrentDirectory);
+        }
+    }
+
+    public FileSystem()
+    {
+        this.Root = new Directory("Root", null);
+        this.CurrentDirectory = this.Root;
+    }
+
+    private int CountFiles(Directory directory)
+    {
+        int count = directory.Files.Count;
+        foreach (var subDirectory in directory.Directories)
+        {
+            count += CountFiles(subDirectory);
+        }
+        return count;
+    }
+
+    private int CountDirectories(Directory directory)
+    {
+        int count = directory.Directories.Count;
+        foreach (var subDirectory in directory.Directories)
+        {
+            count += CountDirectories(subDirectory);
+        }
+        return count;
+    }
+
+    private string GetPath(Directory directory)
+    {
+        if (directory.Parent == null)
+        {
+            return "/";
+        }
+        return $"{GetPath(directory.Parent)}/{directory.Name}";
+    }
+
+    public void CreateFile(string name, string content)
+    {
+        File newFile = new File(name, content);
+        newFile.Parent = this.CurrentDirectory;
+        this.CurrentDirectory.Files.Add(newFile);
+        Console.WriteLine($"File '{name}' created. Total files: {TotalFiles}");
+    }
+
+    public void CreateDirectory(string Name)
+    {
+        Directory newDirectory = new Directory(Name, this.CurrentDirectory);
+        this.CurrentDirectory.Directories.Add(newDirectory);
+        Console.WriteLine($"Directory '{Name}' created. Total directories: {TotalDirectories}");
+    }
+
+    public void ChangeDirectory(string path)
+    {
+        if (path == "/")
+        {
+            this.CurrentDirectory = this.Root;
+            return;
+        }
+
+        if (path.StartsWith("/"))
+        {
+            string[] directories = path.Split('/');
+            Directory tempDirectory = this.Root;
+
+            for (int i = 1; i < directories.Length; i++)
+            {
+                string dir = directories[i];
+                bool directoryFound = false;
+                foreach (var d in tempDirectory.Directories)
+                {
+                    if (d.Name == dir)
+                    {
+                        tempDirectory = d;
+                        directoryFound = true;
+                        break;
+                    }
+                }
+                if (!directoryFound)
+                {
+                    Console.WriteLine("Directory not found.");
+                    return;
+                }
+            }
+
+            this.CurrentDirectory = tempDirectory;
+        }
+        else
+        {
+            Console.WriteLine("Only absolute paths are supported.");
+        }
+    }
+
+    public void List()
+    {
+        Console.WriteLine($"Contents of directory '{CurrentDirectory.Name}' (Path: {CurrentPath}):");
+
+        foreach (var directory in CurrentDirectory.Directories)
+        {
+            Console.WriteLine($"Directory: {directory.Name}");
+        }
+
+        foreach (var file in CurrentDirectory.Files)
+        {
+            Console.WriteLine($"File: {file.Name}");
+        }
+    }
+
+    public void DeleteFile(string name)
+    {
+        File? fileToRemove = null;
+        foreach (var file in CurrentDirectory.Files)
+        {
+            if (file.Name == name)
+            {
+                fileToRemove = file;
+                break;
+            }
+        }
+
+        if (fileToRemove != null)
+        {
+            File toRm = (File)fileToRemove;
+            CurrentDirectory.Files.Remove(toRm);
+            Console.WriteLine($"File '{name}' has been deleted.");
+        }
+        else
+        {
+            Console.WriteLine("File not found.");
+        }
+    }
+
+    public void DeleteDirectory(string name)
+    {
+        Directory? directoryToRemove = null;
+        foreach (var directory in CurrentDirectory.Directories)
+        {
+            if (directory.Name == name)
+            {
+                directoryToRemove = directory;
+                break;
+            }
+        }
+
+        if (directoryToRemove != null)
+        {
+            Console.WriteLine($"Directorie '{directoryToRemove.Name}' has been deleted.");
+            CurrentDirectory.Directories.Remove(directoryToRemove);
+        }
+        else
+        {
+            Console.WriteLine("Directory not found.");
+        }
     }
 }
 
 class Program
 {
-    public static void Main(string[] args)
+    static void Main(string[] args)
     {
-        Animal[] animals = new Animal[]
-        {
-            new Animal("animal" , 20),
-            new Dog("dog" , 22),
-            new Cat("cat" , 24),
-            new PersianCat("persian cat", 26)
-        };
+        FileSystem fileSystem = new FileSystem();
 
-        foreach (var a in animals)
+        while (true)
         {
-            a.MakeSound();
-            if (a is Cat cat)
+            Console.Write($"{fileSystem.CurrentPath} (Files: {fileSystem.TotalFiles}, Directories: {fileSystem.TotalDirectories})> ");
+            string input = Console.ReadLine().Trim();
+
+            if (string.IsNullOrWhiteSpace(input))
+                continue;
+
+            string[] parts = input.Split(' ');
+            string command = parts[0];
+
+            switch (command)
             {
-                cat.Groom();
+                case "mkfile":
+                    if (parts.Length >= 3)
+                    {
+                        string name = parts[1];
+                        string content = string.Join(" ", parts, 2, parts.Length - 2);
+                        fileSystem.CreateFile(name, content);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid command format. Usage: mkfile <name> <content>");
+                    }
+                    break;
+
+                case "ls":
+                    fileSystem.List();
+                    break;
+
+                case "rm":
+                    if (parts.Length == 2)
+                    {
+                        string name = parts[1];
+                        fileSystem.DeleteFile(name);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid command format. Usage: rm <name>");
+                    }
+                    break;
+
+                case "rmdir":
+                    if (parts.Length == 2)
+                    {
+                        string name = parts[1];
+                        fileSystem.DeleteDirectory(name);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid command format. Usage: rmdir <name>");
+                    }
+                    break;
+
+                case "mkdir":
+                    if (parts.Length == 2)
+                    {
+                        string name = parts[1];
+                        fileSystem.CreateDirectory(name);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid command format. Usage: mkdir <name>");
+                    }
+                    break;
+
+                case "pwd":
+                    Console.WriteLine($"Current directory path: {fileSystem.CurrentPath}");
+                    break;
+
+                case "cd":
+                    if (parts.Length == 2)
+                    {
+                        string path = parts[1];
+                        fileSystem.ChangeDirectory(path);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid command format. Usage: cd <path>");
+                    }
+                    break;
+
+                default:
+                    Console.WriteLine("Unknown command.");
+                    break;
             }
         }
     }
