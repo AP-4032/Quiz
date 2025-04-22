@@ -172,6 +172,26 @@ class FileSystem
         }
     }
 
+    public void ListAll()
+    {
+       Console.WriteLine($"Contents of directory '{CurrentDirectory.Name}' and its subdirectories:");
+       ListAllRecursive(CurrentDirectory, "");
+    }
+
+    private void ListAllRecursive(Directory directory, string indent)
+    {
+       foreach (var subDirectory in directory.Directories)
+       {
+           Console.WriteLine($"{indent}Directory: {subDirectory.Name}");
+           ListAllRecursive(subDirectory, indent + "  ");
+       }
+
+       foreach (var file in directory.Files)
+       {
+           Console.WriteLine($"{indent}File: {file.Name}");
+       }
+    }
+
     public void DeleteFile(string name)
     {
         File? fileToRemove = null;
@@ -254,6 +274,10 @@ class Program
 
                 case "ls":
                     fileSystem.List();
+                    break;
+                    
+                case "lsall":
+                    fileSystem.ListAll();
                     break;
 
                 case "rm":
